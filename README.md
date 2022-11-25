@@ -7,7 +7,7 @@ Express Starter api server build with the [Express](https://expressjs.com/en/sta
 #### Live Website - [https://backwatchshop.web.app](https://backwatchshop.web.app)
 
 ## Resources
-I used the following packages in this project.
+I used the following packages and resources in this project.
 
 #### MongoDB Atlas - [Documentation Link](https://www.mongodb.com/docs)
 
