@@ -68,10 +68,6 @@ const dbConnect = async () => {
 
   } catch (error) {
     console.error(error.name, error.message);
-    res.send({
-      success: false,
-      error: error.message,
-    });
   };
 };
 
@@ -110,12 +106,12 @@ app.post('/add-user', async (req, res) => {
     if (result.insertedId) {
       res.send({
         success: true,
-        message: 'User successfully stored',
+        message: 'User successfully stored!',
       });
     } else {
       res.send({
         success: false,
-        message: 'Couldn\'t stored the user',
+        error: 'Couldn\'t stored the user!',
       });
     };
   } catch (error) {
@@ -139,7 +135,7 @@ app.get('/user/:uid', async (req, res) => {
     } else {
       res.send({
         success: false,
-        message: 'User not found',
+        error: 'User not found!',
       });
     };
   } catch (error) {
@@ -156,10 +152,17 @@ app.get('/users', async (req, res) => {
   try {
     const cursor = usersCollection.find({}).sort({ '_id': -1 });
     const result = await cursor.toArray();
-    res.send({
-      success: true,
-      users: result,
-    });
+    if (result.length > 0) {
+      res.send({
+        success: true,
+        result,
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'User not found!',
+      });
+    };
   } catch (error) {
     console.log(error.name, error.message);
     res.send({
@@ -174,10 +177,17 @@ app.get('/categories', async (req, res) => {
   try {
     const cursor = categoriesCollection.find({});
     const result = await cursor.toArray();
-    res.send({
-      success: true,
-      result,
-    });
+    if (result.length > 0) {
+      res.send({
+        success: true,
+        result,
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Category not found!',
+      });
+    };
   } catch (error) {
     console.log(error.name, error.message);
     res.send({
@@ -187,7 +197,66 @@ app.get('/categories', async (req, res) => {
   };
 });
 
-// Add a user
+// Get all products
+app.get('/products', async (req, res) => {
+  try {
+    const cursor = productsCollection.find({}).sort({ '_id': -1 });
+    const result = await cursor.toArray();
+    if (result.length > 0) {
+      res.send({
+        success: true,
+        result,
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Product not found!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Get all products by user role
+app.get('/products/:uid', async (req, res) => {
+  try {
+    const user = await usersCollection.findOne({ uid: req.params.uid });
+    let filter = '';
+    if (user.role === 'admin') {
+      filter = {};
+    } else if (user.role === 'seller') {
+      filter = {sellerId: req.params.uid}
+    } else {
+      return;
+    }
+    const cursor = productsCollection.find(filter).sort({ '_id': -1 });
+    const result = await cursor.toArray();
+    if (result.length > 0) {
+      res.send({
+        success: true,
+        result,
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Product not found!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Add a product
 app.post('/add-product', async (req, res) => {
   try {
     const product = req.body;
@@ -195,12 +264,12 @@ app.post('/add-product', async (req, res) => {
     if (result.insertedId) {
       res.send({
         success: true,
-        message: 'Product successfully added',
+        message: 'Product successfully added!',
       });
     } else {
       res.send({
         success: false,
-        message: 'Couldn\'t add the product',
+        error: 'Couldn\'t add the product!',
       });
     };
   } catch (error) {
@@ -216,7 +285,7 @@ app.post('/add-product', async (req, res) => {
 app.post('/jwt', async (req, res) => {
   try {
     const user = req.body;
-    const token = jwt.sign(user, process.env.ACCESS_API_TOKEN, {expiresIn : '1d'});
+    const token = jwt.sign(user, process.env.ACCESS_API_TOKEN, {expiresIn : '30d'});
     if (user.userId) {
       res.send({
         success: true,
@@ -225,7 +294,7 @@ app.post('/jwt', async (req, res) => {
     } else {
       res.send({
         success: false,
-        error: 'Couldn\'t generate the token',
+        error: 'Couldn\'t generate the token!',
       });
     };
   } catch (error) {
@@ -247,11 +316,12 @@ app.get('/jwt', verifyJWT, async (req, res) => {
         error: 'Unauthorized access, different user!',
       });
       return;
+    } else {
+      res.send({
+        success: true,
+        message: 'JWT verified!',
+      });
     };
-    res.send({
-      success: true,
-      message: 'JWT verified',
-    });
   } catch (error) {
     console.log(error.name, error.message);
     res.send({
