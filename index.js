@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const app = express();
 const port = process.env.PORT || 8000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -100,6 +101,116 @@ const ordersCollection = main.collection('orders');
 const reportsCollection = main.collection('reports');
 
 /// API ENDPOINTS
+
+// Add a user
+app.post('/add-user', async (req, res) => {
+  try {
+    const user = req.body;
+    const result = await usersCollection.insertOne(user);
+    if (result.insertedId) {
+      res.send({
+        success: true,
+        message: 'User successfully stored',
+      });
+    } else {
+      res.send({
+        success: false,
+        message: 'Couldn\'t stored the user',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Get a user
+app.get('/user/:uid', async (req, res) => {
+  try {
+    const result = await usersCollection.findOne({uid: req.params.uid});
+    if (result?.uid) {
+      res.send({
+        success: true,
+        user: result,
+      });
+    } else {
+      res.send({
+        success: false,
+        message: 'User not found',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Get all users
+app.get('/users', async (req, res) => {
+  try {
+    const cursor = usersCollection.find({}).sort({ '_id': -1 });
+    const result = await cursor.toArray();
+    res.send({
+      success: true,
+      users: result,
+    });
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Get all categories
+app.get('/categories', async (req, res) => {
+  try {
+    const cursor = categoriesCollection.find({});
+    const result = await cursor.toArray();
+    res.send({
+      success: true,
+      result,
+    });
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Add a user
+app.post('/add-product', async (req, res) => {
+  try {
+    const product = req.body;
+    const result = await productsCollection.insertOne(product);
+    if (result.insertedId) {
+      res.send({
+        success: true,
+        message: 'Product successfully added',
+      });
+    } else {
+      res.send({
+        success: false,
+        message: 'Couldn\'t add the product',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
 
 // JWT
 app.post('/jwt', async (req, res) => {
