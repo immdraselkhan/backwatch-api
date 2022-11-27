@@ -2,7 +2,7 @@
 
 Express Starter api server build with the [Express](https://expressjs.com/en/starter/installing.html) (NodeJS framework).
 
-#### API Server - [https://api-backwatch.vercel.app](https://api-backwatch.vercel.app)
+#### API Server - [https://backwatch-api.vercel.app](https://backwatch-api.vercel.app)
 
 #### Live Website - [https://backwatchshop.web.app](https://backwatchshop.web.app)
 
