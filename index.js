@@ -126,11 +126,11 @@ app.post('/add-user', async (req, res) => {
 // Get a user
 app.get('/user/:uid', async (req, res) => {
   try {
-    const result = await usersCollection.findOne({uid: req.params.uid});
+    const result = await usersCollection.findOne({ uid: req.params.uid });
     if (result?.uid) {
       res.send({
         success: true,
-        user: result,
+        result: result?.role,
       });
     } else {
       res.send({
@@ -227,9 +227,9 @@ app.get('/products/:uid', async (req, res) => {
   try {
     const user = await usersCollection.findOne({ uid: req.params.uid });
     let filter = '';
-    if (user.role === 'admin') {
+    if (user?.role === 'admin') {
       filter = {};
-    } else if (user.role === 'seller') {
+    } else if (user?.role === 'seller') {
       filter = {sellerId: req.params.uid}
     } else {
       return;
