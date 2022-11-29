@@ -43,6 +43,34 @@ const verifyJWT = async (req, res, next) => {
   };
 };
 
+// verifyAdmin
+const verifyAdmin = async (req, res, next) => {
+  const user = await usersCollection.findOne({ uid: req.decoded.userId });
+  if (user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).send({
+      success: false,
+      error: 'Forbidden access!',
+    });
+    return;
+  };
+};
+
+// verifySeller
+const verifySeller = async (req, res, next) => {
+  const user = await usersCollection.findOne({ uid: req.decoded.userId });
+  if (user.role === 'seller') {
+    next();
+  } else {
+    res.status(403).send({
+      success: false,
+      error: 'Forbidden access!',
+    });
+    return;
+  };
+};
+
 // If MongoDB Atlast, use this server URL (Cluster)
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@practice-cluster.kfbhlaq.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -130,7 +158,7 @@ app.get('/user/:uid', async (req, res) => {
     if (result?.uid) {
       res.send({
         success: true,
-        result: result?.role,
+        result,
       });
     } else {
       res.send({
@@ -223,20 +251,13 @@ app.get('/products', async (req, res) => {
 });
 
 // Get all products by user role
-app.get('/products/:uid', async (req, res) => {
+app.get('/products/:uid', verifyJWT, async (req, res) => {
   try {
     const user = await usersCollection.findOne({ uid: req.params.uid });
-    let filter = '';
-    if (user?.role === 'admin') {
-      filter = {};
-    } else if (user?.role === 'seller') {
-      filter = {sellerId: req.params.uid}
-    } else {
-      return;
-    }
+    const filter = user?.role === 'admin' ? {} : (user?.role === 'seller' ? { sellerId: req.params.uid } : false);
     const cursor = productsCollection.find(filter).sort({ '_id': -1 });
     const result = await cursor.toArray();
-    if (result.length > 0) {
+    if (result) {
       res.send({
         success: true,
         result,
@@ -244,7 +265,7 @@ app.get('/products/:uid', async (req, res) => {
     } else {
       res.send({
         success: false,
-        error: 'Product not found!',
+        error: 'Something went wrong!',
       });
     };
   } catch (error) {
@@ -282,10 +303,10 @@ app.post('/add-product', async (req, res) => {
 });
 
 // Update a product
-app.patch('/update-product/:id', async (req, res) => {
+app.patch('/update-product/:id', verifyJWT, verifySeller, async (req, res) => {
   try {
-    const product = req.body;
-    const result = await productsCollection.updateOne({ _id: ObjectId(req.params.id) }, {$set: product});
+    const result = await productsCollection.updateOne({ _id: ObjectId(req.params.id) }, { $set: req.body });
+
     if (result.modifiedCount) {
       res.send({
         success: true,
@@ -295,6 +316,56 @@ app.patch('/update-product/:id', async (req, res) => {
       res.send({
         success: false,
         error: 'Couldn\'t update the product!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Delete a product
+app.delete('/delete-product/:id', verifyJWT, verifyAdmin, async (req, res) => {
+  try {
+    const result = await productsCollection.deleteOne({ _id: ObjectId(req.params.id) });
+    if (result.deletedCount) {
+      res.send({
+        success: true,
+        message: 'Product successfully deleted!',
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Couldn\'t delete the product!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+
+// Get all sellers
+app.get('/sellers', verifyJWT, verifyAdmin, async (req, res) => {
+  try {
+    const cursor = usersCollection.find({ role: 'seller' });
+    const result = await cursor.toArray();
+    if (result) {
+      res.send({
+        success: true,
+        result,
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Something went wrong!',
       });
     };
   } catch (error) {
