@@ -281,6 +281,31 @@ app.post('/add-product', async (req, res) => {
   };
 });
 
+// Update a product
+app.patch('/update-product/:id', async (req, res) => {
+  try {
+    const product = req.body;
+    const result = await productsCollection.updateOne({ _id: ObjectId(req.params.id) }, {$set: product});
+    if (result.modifiedCount) {
+      res.send({
+        success: true,
+        message: 'Product successfully updated!',
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Couldn\'t update the product!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
 // JWT
 app.post('/jwt', async (req, res) => {
   try {
