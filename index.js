@@ -250,6 +250,30 @@ app.get('/products', async (req, res) => {
   };
 });
 
+// Get all products by category
+app.get('/category/products/:slug', async (req, res) => {
+  try {
+    const cursor = productsCollection.find({ categorySlug: req.params.slug }).sort({ '_id': -1 });
+    const result = await cursor.toArray();
+    if (result.length > 0) {
+      res.send({
+        success: true,
+        result,
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Product not found!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
 // Get all products by user role
 app.get('/products/:uid', verifyJWT, async (req, res) => {
   try {
@@ -472,6 +496,82 @@ app.delete('/delete-buyer/:uid', verifyJWT, verifyAdmin, async (req, res) => {
       res.send({
         success: false,
         error: 'Couldn\'t delete the buyer!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Get all orders by user role
+app.get('/orders/:uid', verifyJWT, async (req, res) => {
+  try {
+    const user = await usersCollection.findOne({ uid: req.params.uid });
+    const filter = user?.role === 'admin' ? {} : (user?.role === 'seller' ? { sellerId: req.params.uid } : { uid: req.params.uid });
+    const cursor = ordersCollection.find(filter).sort({ '_id': -1 });
+    const result = await cursor.toArray();
+    if (result) {
+      res.send({
+        success: true,
+        result,
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Something went wrong!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Delete a order
+app.delete('/delete-order/:id', verifyJWT, verifyAdmin, async (req, res) => {
+  try {
+    const result = await ordersCollection.deleteOne({ _id: ObjectId(req.params.id) });
+    if (result.deletedCount) {
+      res.send({
+        success: true,
+        message: 'Order successfully deleted!',
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Couldn\'t delete the order!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Get all reports
+app.get('/reports', verifyJWT, verifyAdmin, async (req, res) => {
+  try {
+    const cursor = reportsCollection.find({});
+    const result = await cursor.toArray();
+    if (result) {
+      res.send({
+        success: true,
+        result,
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Something went wrong!',
       });
     };
   } catch (error) {
