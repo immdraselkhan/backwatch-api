@@ -306,7 +306,6 @@ app.post('/add-product', async (req, res) => {
 app.patch('/update-product/:id', verifyJWT, verifySeller, async (req, res) => {
   try {
     const result = await productsCollection.updateOne({ _id: ObjectId(req.params.id) }, { $set: req.body });
-
     if (result.modifiedCount) {
       res.send({
         success: true,
@@ -351,7 +350,6 @@ app.delete('/delete-product/:id', verifyJWT, verifyAdmin, async (req, res) => {
   };
 });
 
-
 // Get all sellers
 app.get('/sellers', verifyJWT, verifyAdmin, async (req, res) => {
   try {
@@ -366,6 +364,114 @@ app.get('/sellers', verifyJWT, verifyAdmin, async (req, res) => {
       res.send({
         success: false,
         error: 'Something went wrong!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Update seller status
+app.patch('/update-seller/:uid', verifyJWT, verifyAdmin, async (req, res) => {
+  try {
+    const userResult = await usersCollection.updateOne({ uid: req.params.uid }, { $set: {isVerified: true} });
+    const productsResult = await productsCollection.updateMany({ sellerId: req.params.uid }, { $set: {isVerified: true} });
+    if (userResult.modifiedCount || productsResult.modifiedCount) {
+      res.send({
+        success: true,
+        message: 'Seller successfully verified!',
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Couldn\'t verify the seller!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Delete a seller
+app.delete('/delete-seller/:uid', verifyJWT, verifyAdmin, async (req, res) => {
+  try {
+    const userResult = await usersCollection.deleteOne({ uid: req.params.uid });
+    const productsResult = await productsCollection.updateMany({ sellerId: req.params.uid }, { $set: { isVerified: false } });
+    if (userResult.deletedCount || productsResult.modifiedCount) {
+      res.send({
+        success: true,
+        message: 'Seller successfully deleted!',
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Couldn\'t delete the seller!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Get all buyers by user role
+app.get('/buyers/:uid', verifyJWT, async (req, res) => {
+  try {
+    const user = await usersCollection.findOne({ uid: req.params.uid });
+    let filter;
+    if (user.role === 'admin') {
+      filter = { role: 'buyer' };
+    } else if (user.role === 'seller') {
+      const orders = await ordersCollection.find({ sellerId: req.params.uid }).toArray();
+      filter = { "uid": { $in: orders.map(order => order.uid) } };
+    } else {
+      return [];
+    };
+    const result = await usersCollection.find(filter).sort({ '_id': -1 }).toArray();
+    if (result) {
+      res.send({
+        success: true,
+        result,
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Something went wrong!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Delete a buyer
+app.delete('/delete-buyer/:uid', verifyJWT, verifyAdmin, async (req, res) => {
+  try {
+    const result = await usersCollection.deleteOne({ uid: req.params.uid });
+    if (result.deletedCount) {
+      res.send({
+        success: true,
+        message: 'Buyer successfully deleted!',
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Couldn\'t delete the buyer!',
       });
     };
   } catch (error) {
@@ -395,31 +501,6 @@ app.post('/jwt', async (req, res) => {
     };
   } catch (error) {
     console.error(error.name, error.message);
-    res.send({
-      success: false,
-      error: error.message,
-    });
-  };
-});
-
-// JWT verification example
-app.get('/jwt', verifyJWT, async (req, res) => {
-  try {
-    const decoded = req.decoded;
-    if (decoded.userId !== req.params.userId) {
-      res.status(401).send({
-        success: false,
-        error: 'Unauthorized access, different user!',
-      });
-      return;
-    } else {
-      res.send({
-        success: true,
-        message: 'JWT verified!',
-      });
-    };
-  } catch (error) {
-    console.log(error.name, error.message);
     res.send({
       success: false,
       error: error.message,
