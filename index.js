@@ -5,6 +5,7 @@ const app = express();
 const port = process.env.PORT || 8000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
+const stripe = require("stripe")(process.env.STRIPE_API_SK_TEST);
 
 // Middlewares
 app.use(cors());
@@ -562,7 +563,10 @@ app.get('/orders/:uid', verifyJWT, async (req, res) => {
 // Delete a order
 app.delete('/delete-order/:id', verifyJWT, verifyAdmin, async (req, res) => {
   try {
+    const order = await ordersCollection.findOne({ _id: ObjectId(req.params.id) });
+    const product = await productsCollection.findOne({ _id: ObjectId(order?.productId) });
     const result = await ordersCollection.deleteOne({ _id: ObjectId(req.params.id) });
+    product?.status === 'Booked' && await productsCollection.updateOne({ _id: ObjectId(order?.productId) }, { $set: { status: 'In Stock' } });
     if (result.deletedCount) {
       res.send({
         success: true,
@@ -632,11 +636,83 @@ app.get('/reports', verifyJWT, verifyAdmin, async (req, res) => {
   };
 });
 
+// Delete a report and that product
+app.delete('/delete-report/:pid', verifyJWT, verifyAdmin, async (req, res) => {
+  try {
+    const resportResult = await reportsCollection.deleteMany({ productId: req.params.pid });
+    const productResult = await productsCollection.deleteOne({ _id: ObjectId(req.params.pid) });
+    if (resportResult.deletedCount || productResult.deletedCount) {
+      res.send({
+        success: true,
+        message: 'Report and product Deleted successfully!',
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Couldn\'t delete the report or product!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Payment
+app.post('/create-payment-intent', verifyJWT, async (req, res) => {
+  const booking = req.body;
+  const price = booking.price;
+  const amount = price * 100;
+
+  // Create a PaymentIntent with the order amount and currency
+  const paymentIntent = await stripe.paymentIntents.create({
+    currency: 'usd',
+    amount,
+    'payment_method_types': [
+      'card'
+    ],
+  });
+  res.send({
+    clientSecret: paymentIntent.client_secret,
+  });
+});
+
+// Update an order after a successful payment
+app.patch('/update-order/:id', verifyJWT, async (req, res) => {
+  try {
+    const order = await ordersCollection.findOne({ _id: ObjectId(req.params.id) });
+    const product = await productsCollection.findOne({ _id: ObjectId(order?.productId) });
+    const orderResult = await ordersCollection.updateOne({ _id: ObjectId(req.params.id) }, { $set: req.body });
+    const productResult = await productsCollection.updateOne({ _id: ObjectId(req.params.id) }, { $set: req.body });
+    product?.status === 'Booked' && await productsCollection.updateOne({ _id: ObjectId(order?.productId) }, { $set: { status: 'Paid' } });
+    if (orderResult.modifiedCount || productResult.modifiedCount) {
+      res.send({
+        success: true,
+        message: 'Payment successfully done!',
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Something went wrong!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
 // JWT
 app.post('/jwt', async (req, res) => {
   try {
     const user = req.body;
-    const token = jwt.sign(user, process.env.ACCESS_API_TOKEN, {expiresIn : '30d'});
+    const token = jwt.sign(user, process.env.ACCESS_API_TOKEN, { expiresIn: '30d' });
     if (user.userId) {
       res.send({
         success: true,
