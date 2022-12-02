@@ -507,6 +507,31 @@ app.delete('/delete-buyer/:uid', verifyJWT, verifyAdmin, async (req, res) => {
   };
 });
 
+// Add an order
+app.post('/add-order', verifyJWT, async (req, res) => {
+  try {
+    const result = await ordersCollection.insertOne(req.body);
+    if (result.insertedId) {
+      await productsCollection.updateOne({ _id: ObjectId(req.body.productId) }, { $set: {status: 'Booked'} });
+      res.send({
+        success: true,
+        message: 'Booking successful!',
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Couldn\'t book the product!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
 // Get all orders by user role
 app.get('/orders/:uid', verifyJWT, async (req, res) => {
   try {
@@ -547,6 +572,30 @@ app.delete('/delete-order/:id', verifyJWT, verifyAdmin, async (req, res) => {
       res.send({
         success: false,
         error: 'Couldn\'t delete the order!',
+      });
+    };
+  } catch (error) {
+    console.log(error.name, error.message);
+    res.send({
+      success: false,
+      error: error.message,
+    });
+  };
+});
+
+// Add a report
+app.post('/add-report', verifyJWT, async (req, res) => {
+  try {
+    const result = await reportsCollection.insertOne(req.body);
+    if (result.insertedId) {
+      res.send({
+        success: true,
+        message: 'Report sent successfully!',
+      });
+    } else {
+      res.send({
+        success: false,
+        error: 'Couldn\'t report the product!',
       });
     };
   } catch (error) {
