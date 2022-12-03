@@ -680,14 +680,14 @@ app.post('/create-payment-intent', verifyJWT, async (req, res) => {
   });
 });
 
-// Update an order after a successful payment
+// Update an order
 app.patch('/update-order/:id', verifyJWT, async (req, res) => {
   try {
     const order = await ordersCollection.findOne({ _id: ObjectId(req.params.id) });
     const product = await productsCollection.findOne({ _id: ObjectId(order?.productId) });
     const orderResult = await ordersCollection.updateOne({ _id: ObjectId(req.params.id) }, { $set: req.body });
     const productResult = await productsCollection.updateOne({ _id: ObjectId(req.params.id) }, { $set: req.body });
-    product?.status === 'Booked' && await productsCollection.updateOne({ _id: ObjectId(order?.productId) }, { $set: { status: 'Paid' } });
+    product?.status === 'Booked' && await productsCollection.updateOne({ _id: ObjectId(order?.productId) }, { $set: { status: 'Sold Out' } });
     if (orderResult.modifiedCount || productResult.modifiedCount) {
       res.send({
         success: true,
